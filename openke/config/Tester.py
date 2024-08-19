@@ -14,6 +14,7 @@ from sklearn.metrics import roc_auc_score
 import copy
 from tqdm import tqdm
 
+
 class Tester(object):
 
     def __init__(self, model = None, data_loader = None, use_gpu = True):
@@ -90,7 +91,7 @@ class Tester(object):
         print (hit10)
         return mrr, mr, hit10, hit3, hit1
 
-    def get_best_threshlod(self, score, ans):
+    def get_best_threshold(self, score, ans):
         res = np.concatenate([ans.reshape(-1,1), score.reshape(-1,1)], axis = -1)
         order = np.argsort(score)
         res = res[order]
@@ -101,17 +102,17 @@ class Tester(object):
         total_false = total_all - total_true
 
         res_mx = 0.0
-        threshlod = None
+        threshold = None
         for index, [ans, score] in enumerate(res):
             if ans == 1:
                 total_current += 1.0
             res_current = (2 * total_current + total_false - index - 1) / total_all
             if res_current > res_mx:
                 res_mx = res_current
-                threshlod = score
-        return threshlod, res_mx
+                threshold = score
+        return threshold, res_mx
 
-    def run_triple_classification(self, threshlod = None):
+    def run_triple_classification(self, threshold = None):
         self.lib.initTest()
         self.data_loader.set_sampling_mode('classification')
         score = []
@@ -129,8 +130,8 @@ class Tester(object):
         score = np.concatenate(score, axis = -1)
         ans = np.array(ans)
 
-        if threshlod == None:
-            threshlod, _ = self.get_best_threshlod(score, ans)
+        if threshold == None:
+            threshold, _ = self.get_best_threshold(score, ans)
 
         res = np.concatenate([ans.reshape(-1,1), score.reshape(-1,1)], axis = -1)
         order = np.argsort(score)
@@ -142,10 +143,10 @@ class Tester(object):
         total_false = total_all - total_true
 
         for index, [ans, score] in enumerate(res):
-            if score > threshlod:
+            if score > threshold:
                 acc = (2 * total_current + total_false - index) / total_all
                 break
             elif ans == 1:
                 total_current += 1.0
 
-        return acc, threshlod
+        return acc, threshold

@@ -12,9 +12,10 @@ import json
 import numpy as np
 import copy
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
+
 
 class Trainer(object):
-
 	def __init__(self, 
 				 model = None,
 				 data_loader = None,
@@ -86,13 +87,27 @@ class Trainer(object):
 			)
 		print("Finish initializing...")
 		
-		training_range = tqdm(range(self.train_times))
+		# Export model params to tensorboard-readable file.
+		writer = SummaryWriter()
+		hyperparams = {
+			'alpha': self.alpha,
+			'opt_method': self.opt_method,
+			'dim_e': self.model.get_parameters()['model.ent_embeddings.weight'].shape[1],
+			'dim_r': self.model.get_parameters()['model.rel_embeddings.weight'].shape[1]
+		}
+		writer.add_hparams(hyperparams, {})
+		
+		training_range = tqdm(range(1, self.train_times+1))
 		for epoch in training_range:
 			res = 0.0
 			for data in self.data_loader:
 				loss = self.train_one_step(data)
 				res += loss
 			training_range.set_description("Epoch %d | loss: %f" % (epoch, res))
+			
+			# Write out the stats to be displayed by tensorboard.
+			writer.add_scalar("Loss/train", res, epoch)
+			writer.flush()
 			
 			if self.save_steps and self.checkpoint_dir and (epoch + 1) % self.save_steps == 0:
 				print("Epoch %d has finished, saving..." % (epoch))
